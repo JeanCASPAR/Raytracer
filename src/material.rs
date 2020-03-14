@@ -1,9 +1,11 @@
-use crate::hitable::HitRecord;
+use ::std::fmt::Debug;
+
+use crate::hittable::HitRecord;
+use crate::random::random;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
-use crate::random::random;
 
-pub trait Material: Send + Sync {
+pub trait Material: Send + Sync + Debug {
     fn scatter(&self, ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)>; // Attenuation, scattered
 }
 
@@ -20,10 +22,10 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, _ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
+    fn scatter(&self, ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let target = rec.p + rec.normal + Vec3::random_in_unit_sphere();
         let attenuation = self.albedo;
-        let scattered = Ray::new(rec.p, target - rec.p);
+        let scattered = Ray::new(rec.p, target - rec.p, ray.time());
         Some((attenuation, scattered))
     }
 }
@@ -46,7 +48,11 @@ impl Material for Metal {
     fn scatter(&self, ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let reflected = ray.direction().unit_vector().reflect(&rec.normal);
         let attenuation = self.albedo;
-        let scattered = Ray::new(rec.p, reflected + Vec3::random_in_unit_sphere() * self.fuzz);
+        let scattered = Ray::new(
+            rec.p,
+            reflected + Vec3::random_in_unit_sphere() * self.fuzz,
+            ray.time(),
+        );
 
         if scattered.direction().dot(&rec.normal) > 0.0 {
             Some((attenuation, scattered))
@@ -93,14 +99,14 @@ impl Material for Dielectric {
         };
         if let Some(refracted) = ray.direction().refract(&outward_normal, ni_over_nt) {
             if random() < self.schlick(cosine) {
-                let scattered = Ray::new(rec.p, reflected);
+                let scattered = Ray::new(rec.p, reflected, ray.time());
                 Some((attenuation, scattered))
             } else {
-                let scattered = Ray::new(rec.p, refracted);
+                let scattered = Ray::new(rec.p, refracted, ray.time());
                 Some((attenuation, scattered))
             }
         } else {
-            Some((attenuation, Ray::default()))
+            Some((attenuation, Default::default()))
         }
     }
 }

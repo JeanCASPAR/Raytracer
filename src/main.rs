@@ -1,32 +1,39 @@
 #![deny(missing_debug_implementations)]
 
 mod camera;
-mod hitable;
+mod hittable;
 mod material;
 mod ray;
 mod sphere;
 mod vec3;
 #[macro_use]
 mod random;
+mod aabb;
+mod bvh;
 mod chunk;
+mod moving_sphere;
 
-use std::path::Path;
-use std::sync::{Arc, Mutex, mpsc::{channel, TryRecvError}};
-use std::time::{Duration, Instant};
-use std::thread::sleep;
+use ::std::path::Path;
+use ::std::sync::{
+    mpsc::{channel, TryRecvError},
+    Arc, Mutex,
+};
+use ::std::thread::sleep;
+use ::std::time::{Duration, Instant};
 
 use image::{ImageBuffer, ImageFormat, Rgb};
 use minifb::{Key, Window, WindowOptions};
 use threadpool::Builder;
 
 use camera::Camera;
-use hitable::{Hitable, Scene};
+use chunk::Chunk;
+use hittable::{Hittable, Scene};
 use material::{Dielectric, Lambertian, Metal};
+use moving_sphere::MovingSphere;
+use random::random;
 use ray::Ray;
 use sphere::Sphere;
 use vec3::Vec3;
-use random::random;
-use chunk::Chunk;
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 600;
@@ -35,7 +42,7 @@ const MAX_DEPTH: usize = 50;
 const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const CHUNK_WIDTH: usize = 50;
 const CHUNK_HEIGHT: usize = 50;
-const NB_WORKERS: usize = 10;
+const NB_WORKERS: usize = 2;
 
 pub fn color(ray: Ray, scene: &Scene, depth: usize) -> Vec3 {
     if let Some(rec) = scene.hit(&ray, 0.001, std::f32::MAX) {
@@ -72,16 +79,15 @@ pub fn to_rgb(mut color: u32) -> (u8, u8, u8) {
 fn main() {
     init_rand!();
     let buffer = Arc::new(Mutex::new(vec![0; WIDTH * HEIGHT]));
-    println!("{}", buffer.lock().unwrap()[199 + 1 * WIDTH]);
 
     let mut window = Window::new("Raytracer", WIDTH, HEIGHT, WindowOptions::default())
-    .unwrap_or_else(|e| {
-        panic!("{}", e);
-    });
-    
+        .unwrap_or_else(|e| {
+            panic!("{}", e);
+        });
+
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(Duration::from_micros(16600)));
-    
+
     let scene = Arc::new(random_scene());
     let look_from = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::new(0.0, 0.0, 0.0);
@@ -91,20 +97,32 @@ fn main() {
         UP,
         20.0,
         WIDTH as f32 / HEIGHT as f32,
-        0.1,
+        0.0,
         10.0,
+        0.0,
+        1.0,
     ));
 
     let time = Instant::now();
 
-    let thread_pool = Builder::new()
-        .num_threads(NB_WORKERS)
-        .build();
+    let thread_pool = Builder::new().num_threads(NB_WORKERS).build();
     let (tx, rx) = channel();
-    println!("{} {}", (WIDTH as f32 / CHUNK_WIDTH as f32).ceil() as usize, (HEIGHT as f32 / CHUNK_HEIGHT as f32).ceil() as usize);
+    println!(
+        "{} {}",
+        (WIDTH as f32 / CHUNK_WIDTH as f32).ceil() as usize,
+        (HEIGHT as f32 / CHUNK_HEIGHT as f32).ceil() as usize
+    );
     for j in 0..((HEIGHT as f32 / CHUNK_HEIGHT as f32).ceil() as usize) {
         for i in 0..((WIDTH as f32 / CHUNK_WIDTH as f32).ceil() as usize) {
-            let chunk = Chunk::new(CHUNK_WIDTH, CHUNK_HEIGHT, i * CHUNK_WIDTH, j * CHUNK_HEIGHT, Arc::clone(&buffer), Arc::clone(&camera), Arc::clone(&scene));
+            let chunk = Chunk::new(
+                CHUNK_WIDTH,
+                CHUNK_HEIGHT,
+                i * CHUNK_WIDTH,
+                j * CHUNK_HEIGHT,
+                Arc::clone(&buffer),
+                Arc::clone(&camera),
+                Arc::clone(&scene),
+            );
             let tx = tx.clone();
 
             thread_pool.execute(move || {
@@ -126,19 +144,23 @@ fn main() {
                 k += 1;
                 println!("pass number {}", k);
                 println!("begin render {} {}", i, j);
-                window.update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT).unwrap();
+                window
+                    .update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT)
+                    .unwrap();
                 println!("end render {} {}", i, j);
-                continue
-            },
+                continue;
+            }
             Err(TryRecvError::Disconnected) => break,
             _ => {
-                window.update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT).unwrap();
+                window
+                    .update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT)
+                    .unwrap();
                 sleep(Duration::from_millis(100));
                 if !window.is_open() {
                     panic!("Window closed!");
                 }
-                continue
-            },
+                continue;
+            }
         };
     }
 
@@ -150,11 +172,14 @@ fn main() {
 
     while window.is_open() && !window.is_key_down(Key::Escape) {
         // We unwrap here as we want this code to exit if it fails. Real applications may want to handle this in a different way
-        window.update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT).unwrap();
+        window
+            .update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT)
+            .unwrap();
         if window.is_key_down(Key::S) {
             // Save
             let bytes_buffer = buffer
-                .lock().unwrap()
+                .lock()
+                .unwrap()
                 .iter()
                 .flat_map(|color| {
                     let (r, g, b) = to_rgb(*color);
@@ -176,7 +201,7 @@ fn main() {
 #[allow(dead_code)]
 fn random_scene() -> Scene {
     let n = 500;
-    let mut list: Vec<Arc<dyn Hitable>> = Vec::with_capacity(n + 1);
+    let mut list: Vec<Arc<dyn Hittable>> = Vec::with_capacity(n + 1);
     list.push(Arc::new(Sphere::new(
         Vec3::new(0.0, -1000.0, 0.0),
         1000.0,
@@ -186,16 +211,15 @@ fn random_scene() -> Scene {
     for a in -11..11 {
         for b in -11..11 {
             let choose_mat = random();
-            let center = Vec3::new(
-                a as f32 + 0.9 * random(),
-                0.2,
-                b as f32 + 0.9 * random(),
-            );
+            let center = Vec3::new(a as f32 + 0.9 * random(), 0.2, b as f32 + 0.9 * random());
             if (center - Vec3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 if choose_mat < 0.8 {
                     // Diffuse
-                    list.push(Arc::new(Sphere::new(
+                    list.push(Arc::new(MovingSphere::new(
                         center,
+                        center + Vec3::new(0.0, 0.5 * random(), 0.0),
+                        0.0,
+                        1.0,
                         0.2,
                         Arc::new(Lambertian::new(Vec3::new(
                             random() * random(),

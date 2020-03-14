@@ -1,12 +1,12 @@
 use std::sync::{Arc, Mutex};
 
-use super::{MAX_DEPTH, RAY_PER_PIXEL, WIDTH, HEIGHT};
+use super::{HEIGHT, MAX_DEPTH, RAY_PER_PIXEL, WIDTH};
 
-use crate::vec3::Vec3;
-use crate::ray::Ray;
-use crate::hitable::Scene;
 use crate::camera::Camera;
+use crate::hittable::Scene;
 use crate::random::random;
+use crate::ray::Ray;
+use crate::vec3::Vec3;
 
 pub fn color(ray: Ray, scene: &Scene, depth: usize) -> Vec3 {
     if let Some(rec) = scene.hit(&ray, 0.001, std::f32::MAX) {
@@ -52,7 +52,15 @@ pub struct Chunk {
 }
 
 impl Chunk {
-    pub fn new(width: usize, height: usize, offset_x: usize, offset_y: usize, buffer: Arc<Mutex<Vec<u32>>>, camera: Arc<Camera>, scene: Arc<Scene>) -> Self {
+    pub fn new(
+        width: usize,
+        height: usize,
+        offset_x: usize,
+        offset_y: usize,
+        buffer: Arc<Mutex<Vec<u32>>>,
+        camera: Arc<Camera>,
+        scene: Arc<Scene>,
+    ) -> Self {
         Self {
             width,
             height,

@@ -78,8 +78,7 @@ impl Vec3 {
 
     pub fn random_in_unit_disk() -> Self {
         loop {
-            let vec =
-                Self::new(random(), random(), 0.0) * 2.0 - Self::new(1.0, 1.0, 0.0);
+            let vec = Self::new(random(), random(), 0.0) * 2.0 - Self::new(1.0, 1.0, 0.0);
             if vec.squared_length() < 1.0 {
                 break vec;
             }
@@ -88,8 +87,7 @@ impl Vec3 {
 
     pub fn random_in_unit_sphere() -> Self {
         loop {
-            let vec = Self::new(random(), random(), random()) * 2.0
-                - Self::new(1.0, 1.0, 1.0);
+            let vec = Self::new(random(), random(), random()) * 2.0 - Self::new(1.0, 1.0, 1.0);
             if vec.squared_length() < 1.0 {
                 break vec;
             }
@@ -97,7 +95,7 @@ impl Vec3 {
     }
 
     pub fn reflect(&self, other: &Self) -> Self {
-        return *self - *other * 2.0 * self.dot(other);
+        *self - *other * 2.0 * self.dot(other)
     }
 
     pub fn refract(&self, other: &Self, ni_overt_nt: f32) -> Option<Self> {

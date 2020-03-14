@@ -1,11 +1,12 @@
-use std::fmt::{Debug, Formatter, Result as FmtResult};
 use std::sync::Arc;
 
-use crate::hitable::{HitRecord, Hitable};
+use crate::aabb::AABB;
+use crate::hittable::{HitRecord, Hittable};
 use crate::material::Material;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 
+#[derive(Debug)]
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
@@ -22,7 +23,7 @@ impl Sphere {
     }
 }
 
-impl Hitable for Sphere {
+impl Hittable for Sphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let oc = *ray.origin() - self.center;
         let a = ray.direction().dot(&ray.direction());
@@ -55,13 +56,12 @@ impl Hitable for Sphere {
         }
         None
     }
-}
 
-impl Debug for Sphere {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        f.debug_struct("Sphere")
-            .field("center", &self.center)
-            .field("radius", &self.radius)
-            .finish()
+    fn bounding_box(&self, _t0: f32, _t1: f32) -> Option<AABB> {
+        let aabb = AABB::new(
+            self.center - Vec3::new(self.radius, self.radius, self.radius),
+            self.center - Vec3::new(self.radius, self.radius, self.radius),
+        );
+        Some(aabb)
     }
 }

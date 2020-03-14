@@ -1,3 +1,4 @@
+use crate::random::random;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
 
@@ -11,6 +12,8 @@ pub struct Camera {
     v: Vec3,
     w: Vec3,
     lens_radius: f32,
+    initial_time: f32,
+    final_time: f32,
 }
 
 impl Camera {
@@ -22,6 +25,8 @@ impl Camera {
         aspect: f32,
         aperture: f32,
         focus_dist: f32,
+        initial_time: f32,
+        final_time: f32,
     ) -> Self {
         let lens_radius = aperture / 2.0;
         let theta = vfov.to_radians();
@@ -47,15 +52,19 @@ impl Camera {
             v,
             w,
             lens_radius,
+            initial_time,
+            final_time,
         }
     }
 
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
-        let random = Vec3::random_in_unit_disk() * self.lens_radius;
-        let offset = self.u * random.x() + self.v * random.y();
+        let rand_vec = Vec3::random_in_unit_disk() * self.lens_radius;
+        let offset = self.u * rand_vec.x() + self.v * rand_vec.y();
+        let time = self.initial_time + random() * (self.final_time - self.initial_time);
         Ray::new(
             self.origin + offset,
             self.lower_left_corner + self.horizontal * u + self.vertical * v - self.origin - offset,
+            time,
         )
     }
 }
