@@ -72,7 +72,7 @@ impl Hittable for BVHNode {
         if self.aabb.hit(ray, t_min, t_max) {
             let hit_left = self.left.hit(ray, t_min, t_max);
             let hit_right = self.right.hit(ray, t_min, t_max);
-            
+
             if hit_left.is_some() && hit_right.is_some() {
                 let rec_left = hit_left.unwrap();
                 let rec_right = hit_right.unwrap();

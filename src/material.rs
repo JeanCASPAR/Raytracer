@@ -4,8 +4,8 @@ use ::std::sync::Arc;
 use crate::hittable::HitRecord;
 use crate::random::random;
 use crate::ray::Ray;
-use crate::vec3::Vec3;
 use crate::texture::Texture;
+use crate::vec3::Vec3;
 
 pub trait Material: Send + Sync + Debug {
     fn scatter(&self, ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)>; // Attenuation, scattered
