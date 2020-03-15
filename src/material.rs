@@ -1,9 +1,11 @@
 use ::std::fmt::Debug;
+use ::std::sync::Arc;
 
 use crate::hittable::HitRecord;
 use crate::random::random;
 use crate::ray::Ray;
 use crate::vec3::Vec3;
+use crate::texture::Texture;
 
 pub trait Material: Send + Sync + Debug {
     fn scatter(&self, ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)>; // Attenuation, scattered
@@ -12,11 +14,11 @@ pub trait Material: Send + Sync + Debug {
 /// Diffuse
 #[derive(Debug)]
 pub struct Lambertian {
-    pub albedo: Vec3,
+    pub albedo: Arc<dyn Texture>,
 }
 
 impl Lambertian {
-    pub const fn new(albedo: Vec3) -> Self {
+    pub fn new(albedo: Arc<dyn Texture>) -> Self {
         Self { albedo }
     }
 }
@@ -24,7 +26,7 @@ impl Lambertian {
 impl Material for Lambertian {
     fn scatter(&self, ray: &Ray, rec: &HitRecord) -> Option<(Vec3, Ray)> {
         let target = rec.p + rec.normal + Vec3::random_in_unit_sphere();
-        let attenuation = self.albedo;
+        let attenuation = self.albedo.value(0.0, 0.0, &rec.p);
         let scattered = Ray::new(rec.p, target - rec.p, ray.time());
         Some((attenuation, scattered))
     }

@@ -44,7 +44,7 @@ impl MovingSphere {
 
 impl Hittable for MovingSphere {
     fn hit(&self, ray: &Ray, t_min: f32, t_max: f32) -> std::option::Option<HitRecord> {
-        let oc = *ray.origin() - self.center(ray.time());
+        let oc = ray.origin() - self.center(ray.time());
         let a = ray.direction().dot(&ray.direction());
         let b = oc.dot(&ray.direction());
         let c = oc.dot(&oc) - self.radius * self.radius;

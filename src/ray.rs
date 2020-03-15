@@ -16,12 +16,12 @@ impl Ray {
         }
     }
 
-    pub const fn origin(&self) -> &Vec3 {
-        &self.origin
+    pub const fn origin(&self) -> Vec3 {
+        self.origin
     }
 
-    pub const fn direction(&self) -> &Vec3 {
-        &self.direction
+    pub const fn direction(&self) -> Vec3 {
+        self.direction
     }
 
     pub const fn time(&self) -> f32 {

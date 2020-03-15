@@ -17,7 +17,7 @@ impl BVHNode {
         let axis = (3.0 * random()) as i32;
 
         let getter = |hittable: &Arc<dyn Hittable>| {
-            *hittable
+            hittable
                 .bounding_box(0.0, 0.0)
                 .expect("Non bounding box in BVHNode constructor")
                 .min()

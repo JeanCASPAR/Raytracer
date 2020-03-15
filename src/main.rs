@@ -12,6 +12,7 @@ mod aabb;
 mod bvh;
 mod chunk;
 mod moving_sphere;
+mod texture;
 
 use ::std::path::Path;
 use ::std::sync::{
@@ -34,15 +35,16 @@ use random::random;
 use ray::Ray;
 use sphere::Sphere;
 use vec3::Vec3;
+use texture::{ConstantTexture, CheckerTexture, Texture};
 
 const WIDTH: usize = 800;
 const HEIGHT: usize = 600;
 const RAY_PER_PIXEL: usize = 100;
-const MAX_DEPTH: usize = 50;
+const MAX_DEPTH: usize = 10;
 const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const CHUNK_WIDTH: usize = 50;
 const CHUNK_HEIGHT: usize = 50;
-const NB_WORKERS: usize = 2;
+const NB_WORKERS: usize = 10;
 
 pub fn color(ray: Ray, scene: &Scene, depth: usize) -> Vec3 {
     if let Some(rec) = scene.hit(&ray, 0.001, std::f32::MAX) {
@@ -88,7 +90,7 @@ fn main() {
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(Duration::from_micros(16600)));
 
-    let scene = Arc::new(random_scene());
+    let scene = Arc::new(two_spheres());
     let look_from = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::new(0.0, 0.0, 0.0);
     let camera = Arc::new(Camera::new(
@@ -205,7 +207,10 @@ fn random_scene() -> Scene {
     list.push(Arc::new(Sphere::new(
         Vec3::new(0.0, -1000.0, 0.0),
         1000.0,
-        Arc::new(Lambertian::new(Vec3::new(0.5, 0.5, 0.5))),
+        Arc::new(Lambertian::new(Arc::new(CheckerTexture::new(
+            Arc::new(ConstantTexture::new(Vec3::new(0.2, 0.3, 0.1))),
+            Arc::new(ConstantTexture::new(Vec3::new(0.9, 0.9, 0.9))),
+        )))),
     )));
 
     for a in -11..11 {
@@ -221,11 +226,11 @@ fn random_scene() -> Scene {
                         0.0,
                         1.0,
                         0.2,
-                        Arc::new(Lambertian::new(Vec3::new(
+                        Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(Vec3::new(
                             random() * random(),
                             random() * random(),
                             random() * random(),
-                        ))),
+                        ))))),
                     )));
                 } else if choose_mat < 0.95 {
                     // Metal
@@ -261,7 +266,7 @@ fn random_scene() -> Scene {
     list.push(Arc::new(Sphere::new(
         Vec3::new(-4.0, 1.0, 0.0),
         1.0,
-        Arc::new(Lambertian::new(Vec3::new(0.4, 0.2, 0.1))),
+        Arc::new(Lambertian::new(Arc::new(ConstantTexture::new(Vec3::new(0.4, 0.2, 0.1))))),
     )));
     list.push(Arc::new(Sphere::new(
         Vec3::new(4.0, 1.0, 0.0),
@@ -270,4 +275,20 @@ fn random_scene() -> Scene {
     )));
 
     Scene::new(list)
+}
+
+#[allow(dead_code)]
+pub fn two_spheres() -> Scene {
+    let checker: Arc<dyn Texture> = Arc::new(CheckerTexture::new(
+        Arc::new(ConstantTexture::new(Vec3::new(0.2, 0.3, 0.1))),
+        Arc::new(ConstantTexture::new(Vec3::new(0.9, 0.9, 0.9))),
+    ));
+
+    let n = 50;
+    let mut vec: Vec<Arc<dyn Hittable>> = Vec::with_capacity(n + 1);
+
+    vec.push(Arc::new(Sphere::new(Vec3::new(0.0, -10.0, 0.0), 10.0, Arc::new(Lambertian::new(Arc::clone(&checker))))));
+    vec.push(Arc::new(Sphere::new(Vec3::new(0.0, 10.0, 0.0), 10.0, Arc::new(Lambertian::new(Arc::clone(&checker))))));
+
+    Scene::new(vec)
 }
