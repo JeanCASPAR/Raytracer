@@ -1,23 +1,41 @@
 use ::std::ptr::swap;
+use ::std::sync::Once;
 
 use crate::random::random;
 use crate::vec3::Vec3;
 
 #[derive(Debug)]
 pub struct Perlin {
-    random_vec: Vec<Vec3>,
-    perm_x: Vec<i32>,
-    perm_y: Vec<i32>,
-    perm_z: Vec<i32>,
+    random_vec: &'static [Vec3],
+    perm_x: &'static [i32],
+    perm_y: &'static [i32],
+    perm_z: &'static [i32],
 }
 
 impl Perlin {
     pub fn new() -> Self {
-        Self {
-            random_vec: Self::perlin_generate(),
-            perm_x: Self::perlin_generate_perm(),
-            perm_y: Self::perlin_generate_perm(),
-            perm_z: Self::perlin_generate_perm(),
+        static mut RANDOM_VEC: Option<[Vec3; 256]> = None;
+        static mut PERM_X: Option<[i32; 256]> = None;
+        static mut PERM_Y: Option<[i32; 256]> = None;
+        static mut PERM_Z: Option<[i32; 256]> = None;
+
+        static ONCE: Once = Once::new();
+        ONCE.call_once(|| {
+            unsafe {
+                RANDOM_VEC = Some(Self::perlin_generate());
+                PERM_X = Some(Self::perlin_generate_perm());
+                PERM_Y = Some(Self::perlin_generate_perm());
+                PERM_Z = Some(Self::perlin_generate_perm());
+            }
+        });
+
+        unsafe {
+            Self {
+                random_vec: RANDOM_VEC.as_ref().unwrap(),
+                perm_x: PERM_X.as_ref().unwrap(),
+                perm_y: PERM_Y.as_ref().unwrap(),
+                perm_z: PERM_Z.as_ref().unwrap(),
+            }
         }
     }
 
@@ -47,17 +65,15 @@ impl Perlin {
         Self::perlin_interpolation(&c, u, v, w)
     }
 
-    fn perlin_generate() -> Vec<Vec3> {
-        let mut p = Vec::with_capacity(256);
-        for _ in 0..256 {
-            p.push(
-                Vec3::new(
-                    2.0 * random() - 1.0,
-                    2.0 * random() - 1.0,
-                    2.0 * random() - 1.0,
-                )
-                .unit_vector(),
-            );
+    fn perlin_generate() -> [Vec3; 256] {
+        let mut p = [Default::default(); 256];
+        for i in 0..256 {
+            p[i] = Vec3::new(
+                2.0 * random() - 1.0,
+                2.0 * random() - 1.0,
+                2.0 * random() - 1.0,
+            )
+            .unit_vector();
         }
         p
     }
@@ -71,10 +87,10 @@ impl Perlin {
         }
     }
 
-    fn perlin_generate_perm() -> Vec<i32> {
-        let mut p = Vec::with_capacity(256);
+    fn perlin_generate_perm() -> [i32; 256] {
+        let mut p =  [0; 256];
         for i in 0..256 {
-            p.push(i as i32);
+            p[i] = i as i32;
         }
         Self::permute(&mut p);
         p

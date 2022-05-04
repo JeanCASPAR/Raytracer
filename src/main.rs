@@ -38,10 +38,10 @@ use sphere::Sphere;
 use texture::{CheckerTexture, ConstantTexture, NoiseTexture, Texture};
 use vec3::Vec3;
 
-const WIDTH: usize = 200;
-const HEIGHT: usize = 200;
+const WIDTH: usize = 800;
+const HEIGHT: usize = 800;
 const RAY_PER_PIXEL: usize = 100;
-const MAX_DEPTH: usize = 50;
+const MAX_DEPTH: usize = 100;
 const UP: Vec3 = Vec3::new(0.0, 1.0, 0.0);
 const CHUNK_WIDTH: usize = 50;
 const CHUNK_HEIGHT: usize = 50;
@@ -91,7 +91,12 @@ fn main() {
     // Limit to max ~60 fps update rate
     window.limit_update_rate(Some(Duration::from_micros(16600)));
 
-    let scene = Arc::new(two_perlin_spheres());
+    let scene = Arc::new(match option_env!("SCENE") {
+        Some("MARBLE") => two_perlin_spheres(),
+        Some("SPHERES") => two_spheres(),
+        Some("RANDOM") => random_scene(),
+        _ => two_perlin_spheres(),
+    });
     let look_from = Vec3::new(13.0, 2.0, 3.0);
     let look_at = Vec3::new(0.0, 0.0, 0.0);
     let camera = Arc::new(Camera::new(
@@ -110,7 +115,8 @@ fn main() {
 
     let thread_pool = Builder::new().num_threads(NB_WORKERS).build();
     let (tx, rx) = channel();
-    println!(
+    #[cfg(debug_assertions)]
+    eprintln!(
         "{} {}",
         (WIDTH as f32 / CHUNK_WIDTH as f32).ceil() as usize,
         (HEIGHT as f32 / CHUNK_HEIGHT as f32).ceil() as usize
@@ -129,9 +135,11 @@ fn main() {
             let tx = tx.clone();
 
             thread_pool.execute(move || {
-                println!("begin {} {}", i, j);
+                #[cfg(debug_assertions)]
+                eprintln!("begin {} {}", i, j);
                 chunk.process();
-                println!("end {} {}", i, j);
+                #[cfg(debug_assertions)]
+                eprintln!("end {} {}", i, j);
                 tx.send((i, j)).unwrap();
             });
         }
@@ -142,15 +150,20 @@ fn main() {
     let mut k = 0;
 
     loop {
+        // i and j are used here in debug only
+        #[allow(unused_variables)]
         match rx.try_recv() {
             Ok((i, j)) => {
                 k += 1;
-                println!("pass number {}", k);
-                println!("begin render {} {}", i, j);
+                #[cfg(debug_assertions)]
+                eprintln!("pass number {}", k);
+                #[cfg(debug_assertions)]
+                eprintln!("begin render {} {}", i, j);
                 window
                     .update_with_buffer(&*buffer.lock().unwrap(), WIDTH, HEIGHT)
                     .unwrap();
-                println!("end render {} {}", i, j);
+                #[cfg(debug_assertions)]
+                eprintln!("end render {} {}", i, j);
                 continue;
             }
             Err(TryRecvError::Disconnected) => break,
@@ -196,12 +209,12 @@ fn main() {
                 .save_with_format(&Path::new("./image.png"), ImageFormat::Png)
                 .unwrap();
 
-            println!("Image saved!")
+            #[cfg(debug_assertions)]
+            eprintln!("Image saved!")
         }
     }
 }
 
-#[allow(dead_code)]
 fn random_scene() -> Scene {
     let n = 500;
     let mut list: Vec<Arc<dyn Hittable>> = Vec::with_capacity(n + 1);
@@ -280,7 +293,6 @@ fn random_scene() -> Scene {
     Scene::new(list)
 }
 
-#[allow(dead_code)]
 fn two_spheres() -> Scene {
     let checker: Arc<dyn Texture> = Arc::new(CheckerTexture::new(
         Arc::new(ConstantTexture::new(Vec3::new(0.2, 0.3, 0.1))),
@@ -304,9 +316,8 @@ fn two_spheres() -> Scene {
     Scene::new(vec)
 }
 
-#[allow(dead_code)]
 fn two_perlin_spheres() -> Scene {
-    let pertext: Arc<dyn Texture> = Arc::new(NoiseTexture::new(10.0));
+    let pertext: Arc<dyn Texture> = Arc::new(NoiseTexture::new(50.0));
     let mut vec: Vec<Arc<dyn Hittable>> = Vec::with_capacity(2);
     vec.push(Arc::new(Sphere::new(
         Vec3::new(0.0, -1000.0, 0.0),

@@ -95,10 +95,12 @@ impl Chunk {
                 if let Some(index) = self.buffer.lock().unwrap().get_mut(i + j * WIDTH) {
                     *index = from_rgb(r, g, b);
                 } else {
-                    println!("{}, {}, {}, {}", i, j, self.offset_x, self.offset_y);
+                    #[cfg(debug_assertions)]
+                    eprintln!("{}, {}, {}, {}", i, j, self.offset_x, self.offset_y);
                 }
             }
         }
-        println!("terminé");
+        #[cfg(debug_assertions)]
+        eprintln!("finished");
     }
 }

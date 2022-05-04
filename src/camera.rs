@@ -39,7 +39,8 @@ impl Camera {
         let lower_left_corner = origin - (u * half_width + v * half_height + w) * focus_dist;
         let horizontal = u * 2.0 * half_width * focus_dist;
         let vertical = v * 2.0 * half_height * focus_dist;
-        println!(
+        #[cfg(debug_assertions)]
+        eprintln!(
             "{:?} {:?} {:?} {:?}",
             lower_left_corner, horizontal, vertical, origin
         );
