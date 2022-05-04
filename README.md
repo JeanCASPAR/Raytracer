@@ -16,4 +16,4 @@ There is currently a problem with MARBLE, I don't remembered what parameters I h
 
 * **RANDOM** if you want this:
 ![Three big spheres on a green and white checker-textured plane, the first one is made of glass, the second of metal and the last one of a lambertian material. There are a lot of moving or fixed small lambertian, metal of glass spheres around.](./images/random.png)
-The black point are points where the max depth is too small. Blur represents "moving" balls, though it may to pronounced sometimes.
+The black point are points where the max depth is too small. Blur represents "moving" balls, though it may too pronounced sometimes.
