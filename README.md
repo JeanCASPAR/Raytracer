@@ -1,5 +1,5 @@
 # Raytracer
-Heavily inspired from https://raytracing.github.io/, book 1 and 2.
+Rust implementation of https://raytracing.github.io/, book 1 and 2.
 
 For changing parameters such as width, height, ray depth or the number of workers, you have to modify the code directly.
 Make sure to run in release mode to avoid having lots of logs printed in stderr.
